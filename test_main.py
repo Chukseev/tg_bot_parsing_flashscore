@@ -1,6 +1,7 @@
 from telebot import TeleBot, types
 from find_injure import matches_list, get_players_list, get_teams
 from files_manager import into_csv_data, into_excel_data
+from datetime import datetime, timedelta
 import time
 import os
 import environ
@@ -11,6 +12,17 @@ token = env('token', )
 bot = TeleBot(token=token)
 
 
+def get_next_seven_dates():
+    today = datetime.today()
+    dates = {}
+
+    for i in range(1, 8):
+        date = today + timedelta(days=i)
+        dates[i] = date.strftime('%d/%m')
+
+    return dates
+
+
 def get_matches_in_page(matches, page):
     min_index = 10 * (page - 1)
     max_index = min_index + 10
@@ -19,14 +31,16 @@ def get_matches_in_page(matches, page):
 
 @bot.message_handler(commands=['start'])
 def start(message):
+    days = get_next_seven_dates()
     inline_keyboard = types.InlineKeyboardMarkup()
-    button_today = types.InlineKeyboardButton(text="Список матчей на сегодня", callback_data="today_matches")
-    button_tomorrow = types.InlineKeyboardButton(text="Список матчей на завтра", callback_data="tomorrow_matches")
-    inline_keyboard.add(button_today, button_tomorrow)
-
+    button_today = types.InlineKeyboardButton(text="Матчи на сегодня", callback_data="today_matches")
+    inline_keyboard.add(button_today)
+    for day in days:
+        button = types.InlineKeyboardButton(text=f"Матчи на {days[day]}", callback_data=f"{day}_matches")
+        inline_keyboard.add(button)
     bot.send_message(
         message.chat.id,
-        "Выберите день, чтобы увидеть список матчей:",
+        "Выберите день,\nчтобы увидеть список матчей:",
         reply_markup=inline_keyboard
     )
 
@@ -39,14 +53,17 @@ def handle_today_matches(call, page=1):
 
 
 # Обработчик кнопки "Список матчей на завтра"
-@bot.callback_query_handler(func=lambda call: call.data == "tomorrow_matches")
+@bot.callback_query_handler(func=lambda call: "_matches" in call.data) #func=lambda call: "_page_" in call.data
 def handle_tomorrow_matches(call, page=1):
-    matches = matches_list('f_4_1_3_ru_5')  # Получаем список матчей на завтра
-    handle_matches(call, matches, "tomorrow", page)
+    day = int(call.data.split('_')[0])
+    matches = matches_list(f'f_4_{day}_3_ru_5')  # Получаем список матчей на завтра
+    handle_matches(call, matches, f"{day}", page)
 
 
 # Общий обработчик матчей
 def handle_matches(call, matches, day_type, page=1):
+    days = get_next_seven_dates()
+    day = int(day_type)
     total_pages = (len(matches) + 9) // 10  # Общее количество страниц
     inline_keyboard = types.InlineKeyboardMarkup()
 
@@ -78,13 +95,13 @@ def handle_matches(call, matches, day_type, page=1):
         bot.edit_message_text(
             chat_id=call.message.chat.id,
             message_id=call.message.message_id,
-            text=f"Список матчей ({'Сегодня' if day_type == 'today' else 'Завтра'}), стр. {page}/{total_pages}:",
+            text=f"Список матчей ({'Сегодня' if day_type == 'today' else days[day]}), стр. {page}/{total_pages}:",
             reply_markup=inline_keyboard
         )
     else:
         bot.send_message(
             chat_id=call.chat.id,
-            text=f"Список матчей ({'Сегодня' if day_type == 'today' else 'Завтра'}), стр. {page}/{total_pages}:",
+            text=f"Список матчей ({'Сегодня' if day_type == 'today' else days[day]}), стр. {page}/{total_pages}:",
             reply_markup=inline_keyboard
         )
 
@@ -96,7 +113,7 @@ def handle_page_callback(call):
     page = int(data[2])  # Номер страницы
 
     # Определяем список матчей для выбранного дня
-    matches = matches_list('f_4_0_3_ru_5') if day_type == "today" else matches_list('f_4_1_3_ru_5')
+    matches = matches_list('f_4_0_3_ru_5') if day_type == "today" else matches_list(f'f_4_{day_type}_3_ru_5')
 
     # Перезагружаем список матчей с учетом новой страницы
     handle_matches(call, matches, day_type, page)
@@ -108,7 +125,7 @@ def handle_match_callback(call):
     data = call.data.split("_")
     day_type = data[1]  # today или tomorrow
     match_index = int(data[2])  # Индекс матча
-    matches = matches_list('f_4_0_3_ru_5') if day_type == "today" else matches_list('f_4_1_3_ru_5')  # Список матчей
+    matches = matches_list('f_4_0_3_ru_5') if day_type == "today" else matches_list(f'f_4_{day_type}_3_ru_5')  # Список матчей
     match = matches[match_index]
 
     # Получаем ссылки команд из функции get_teams
@@ -146,7 +163,7 @@ def handle_team_callback(call):
     team_type = data[1]  # Тип команды (home/away)
     day_type = data[2]  # today или tomorrow
     match_index = int(data[3])  # Индекс матча
-    matches = matches_list('f_4_0_3_ru_5') if day_type == "today" else matches_list('f_4_1_3_ru_5')  # Список матчей
+    matches = matches_list('f_4_0_3_ru_5') if day_type == "today" else matches_list(f'f_4_{day_type}_3_ru_5')  # Список матчей
     match = matches[match_index]
 
     # Удаляем старое сообщение
@@ -208,12 +225,15 @@ def handle_team_callback(call):
 
 @bot.callback_query_handler(func=lambda call: call.data == "choose_dates")
 def handle_choose_dates(call):
+    days = get_next_seven_dates()
     # Создаем клавиатуру для выбора дат
     inline_keyboard = types.InlineKeyboardMarkup()
     inline_keyboard.add(
-        types.InlineKeyboardButton("Список матчей на сегодня", callback_data="today_page_1"),
-        types.InlineKeyboardButton("Список матчей на завтра", callback_data="tomorrow_page_1")
+        types.InlineKeyboardButton("Матчи на сегодня", callback_data="today_page_1"),
     )
+    for day in days:
+        button = types.InlineKeyboardButton(text=f"Матчи на {days[day]}", callback_data=f"{day}_page_1")
+        inline_keyboard.add(button)
 
     # Отправляем сообщение с выбором дат
     bot.edit_message_text(
