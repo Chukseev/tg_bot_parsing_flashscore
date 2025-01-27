@@ -12,6 +12,17 @@ token = env('token', )
 bot = TeleBot(token=token)
 
 
+def get_leagues(match_list):
+    res = {}
+    for league in match_list:
+        res[league['league_id']] = league['league']
+    return res
+
+
+def get_matches_from_leagues(league_id, match_list):
+    result = [match for match in match_list if match['league_id'] == league_id]
+    return result
+
 def get_next_seven_dates():
     today = datetime.today()
     dates = {}
@@ -48,6 +59,7 @@ def start(message):
 # Обработчик кнопки "Список матчей на сегодня"
 @bot.callback_query_handler(func=lambda call: call.data == "today_matches")
 def handle_today_matches(call, page=1):
+
     matches = matches_list('f_4_0_3_ru_5')  # Получаем список матчей на сегодня
     handle_matches(call, matches, "today", page)
 
@@ -178,14 +190,6 @@ def handle_team_callback(call):
 
     # Получаем список игроков команды
     players = get_players_list(team_url)
-
-    # Формируем текстовое сообщение с информацией о игроках
-    players_info = "\n".join(
-        f"{player['name']} - {player['last_match']}\n"
-        f"И: {player['matches_played']}, Г: {player['goals']}, "
-        f"Пер: {player['assists']}, О: {player['points']}"
-        for player in players
-    )
 
     # Редактируем сообщение с информацией о игроках
     bot.delete_message(

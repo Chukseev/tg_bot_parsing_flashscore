@@ -40,6 +40,7 @@ def matches_list(feed) -> list: # feed = 'f_4_0_3_ru_5'
             # score = f'{game.get("AG")} : {game.get("AH")}'
             # date = datetime.fromtimestamp(int(game.get("AD")))
             result.append({'url': url, 'team_1': team_1, 'team_2': team_2, "league": league, 'league_id': league_id})
+    print(result)
     return result
 
 
