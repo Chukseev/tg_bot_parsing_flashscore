@@ -14,15 +14,6 @@ def get_matches_in_page(matches, page):
     return matches[min_index:max_index]
 
 
-def group_matches_by_league(matches):
-    leagues = {}
-    for match in matches:
-        league = match['league']
-        if league not in leagues:
-            leagues[league] = []
-        leagues[league].append(match)
-    return leagues
-
 # Команда /start
 @bot.message_handler(commands=['start'])
 def start(message):
@@ -42,115 +33,38 @@ def start(message):
 
 # Обработчик кнопки "Список матчей на сегодня"
 @bot.callback_query_handler(func=lambda call: call.data == "today_matches")
-def handle_today_matches(call):
+def handle_today_matches(call, page=1):
     matches = matches_list('f_4_0_3_ru_5')  # Получаем список матчей на сегодня
-    leagues = group_matches_by_league(matches)  # Группируем матчи по лигам
-    show_leagues(call, leagues, "today")
+    handle_matches(call, matches, "today", page)
 
 
+# Обработчик кнопки "Список матчей на завтра"
 @bot.callback_query_handler(func=lambda call: call.data == "tomorrow_matches")
-def handle_tomorrow_matches(call):
+def handle_tomorrow_matches(call, page=1):
     matches = matches_list('f_4_1_3_ru_5')  # Получаем список матчей на завтра
-    leagues = group_matches_by_league(matches)  # Группируем матчи по лигам
-    show_leagues(call, leagues, "tomorrow")
+    handle_matches(call, matches, "tomorrow", page)
 
-
-def show_leagues(call, leagues, day_type, page=1):
-    league_names = list(leagues.keys())
-    total_pages = (len(league_names) + 9) // 10  # Рассчитываем общее количество страниц
-    inline_keyboard = types.InlineKeyboardMarkup()
-
-    # Добавляем кнопки для каждой лиги на текущей странице
-    for i, league in enumerate(league_names[(page - 1) * 10:page * 10]):
-        inline_keyboard.add(
-            types.InlineKeyboardButton(
-                text=league,
-                callback_data=f"league_{day_type}_{(page - 1) * 10 + i}"  # Уникальный callback_data
-            )
-        )
-
-    # Кнопки навигации
-    nav_buttons = []
-    if page > 1:
-        nav_buttons.append(types.InlineKeyboardButton("⬅ Назад", callback_data=f"leagues_{day_type}_page_{page - 1}"))
-    if page < total_pages:
-        nav_buttons.append(types.InlineKeyboardButton("➡ Вперед", callback_data=f"leagues_{day_type}_page_{page + 1}"))
-    if nav_buttons:
-        inline_keyboard.add(*nav_buttons)
-
-    # Кнопка "Назад к выбору дат"
-    back_to_dates_button = types.InlineKeyboardButton("⬅ Назад к выбору дат", callback_data="choose_dates")
-    inline_keyboard.add(back_to_dates_button)
-
-    # Отправляем сообщение
-    bot.edit_message_text(
-        chat_id=call.message.chat.id,
-        message_id=call.message.message_id,
-        text=f"Список лиг ({'Сегодня' if day_type == 'today' else 'Завтра'}), стр. {page}/{total_pages}:",
-        reply_markup=inline_keyboard
-    )
-
-@bot.callback_query_handler(func=lambda call: call.data.startswith("league_"))
-def handle_league_callback(call):
-    data = call.data.split("_")
-    day_type = data[1]  # today или tomorrow
-    league_index = int(data[2])  # Индекс лиги
-    matches = matches_list('f_4_0_3_ru_5') if day_type == "today" else matches_list('f_4_1_3_ru_5')
-    leagues = group_matches_by_league(matches)
-    league_names = list(leagues.keys())
-    selected_league = league_names[league_index]
-    league_matches = leagues[selected_league]  # Матчи выбранной лиги
-
-    # Отображаем матчи выбранной лиги
-    show_matches_for_league(call, league_matches, day_type, selected_league)
-
-
-def show_matches_for_league(call, matches, day_type, league_name, page=1):
-    total_pages = (len(matches) + 9) // 10  # Рассчитываем количество страниц
-    inline_keyboard = types.InlineKeyboardMarkup()
-
-    # Добавляем кнопки матчей
-    for i, match in enumerate(get_matches_in_page(matches, page)):
-        inline_keyboard.add(
-            types.InlineKeyboardButton(
-                text=f"{match['team_1']} - {match['team_2']}",
-                callback_data=f"match_{day_type}_{i}"  # Уникальный callback_data
-            )
-        )
-
-    # Кнопки навигации
-    nav_buttons = []
-    if page > 1:
-        nav_buttons.append(types.InlineKeyboardButton("⬅ Назад", callback_data=f"league_{day_type}_page_{page - 1}"))
-    if page < total_pages:
-        nav_buttons.append(types.InlineKeyboardButton("➡ Вперед", callback_data=f"league_{day_type}_page_{page + 1}"))
-    if nav_buttons:
-        inline_keyboard.add(*nav_buttons)
-
-    # Кнопка "Назад к выбору лиг"
-    back_to_leagues_button = types.InlineKeyboardButton("⬅ Назад к выбору лиг",
-                                                        callback_data=f"back_leagues_{day_type}")
-    inline_keyboard.add(back_to_leagues_button)
-
-
-    # Отправляем сообщение
-    bot.edit_message_text(
-        chat_id=call.message.chat.id,
-        message_id=call.message.message_id,
-        text=f"Матчи лиги: {league_name}, стр. {page}/{total_pages}:",
-        reply_markup=inline_keyboard
-    )
 
 # Общий обработчик матчей
 def handle_matches(call, matches, day_type, page=1):
     total_pages = (len(matches) + 9) // 10  # Общее количество страниц
     inline_keyboard = types.InlineKeyboardMarkup()
 
-    # Кнопки матчей
-    for i, match in enumerate(get_matches_in_page(matches, page)):
+    # Группировка матчей по лигам
+    sorted_matches = {}
+    for match in matches:
+        league = match['league']
+        league_id = match['league_id']  # Предположим, что у нас есть идентификатор лиги
+        if league_id not in sorted_matches:
+            sorted_matches[league_id] = []
+        sorted_matches[league_id].append(match)
+
+    # Кнопки лиг
+    for league_id, league_matches in sorted_matches.items():
+        league_button_data = f"league_{day_type}_{league_id}"  # Используем ID лиги
         button = types.InlineKeyboardButton(
-            text=f"{match['team_1']} - {match['team_2']}",
-            callback_data=f"match_{day_type}_{(page - 1) * 10 + i}"  # Уникальный callback_data
+            text=f"Лига {league_id}",  # Можно отображать ID или имя лиги
+            callback_data=league_button_data
         )
         inline_keyboard.add(button)
 
@@ -184,29 +98,19 @@ def handle_matches(call, matches, day_type, page=1):
             reply_markup=inline_keyboard
         )
 
-@bot.callback_query_handler(func=lambda call: call.data.startswith("back_leagues_"))
-def handle_back_to_leagues(call):
-    data = call.data.split("_")
-    day_type = data[2]  # today или tomorrow
-    matches = matches_list('f_4_0_3_ru_5') if day_type == "today" else matches_list('f_4_1_3_ru_5')
-    leagues = group_matches_by_league(matches)
-    show_leagues(call, leagues, day_type)
 
-
+# Обработчик переключения страниц
 @bot.callback_query_handler(func=lambda call: "_page_" in call.data)
 def handle_page_callback(call):
     data = call.data.split("_")
-    if data[0] == "leagues":
-        day_type = data[1]  # today или tomorrow
-        page = int(data[3])  # Номер страницы
-        matches = matches_list('f_4_0_3_ru_5') if day_type == "today" else matches_list('f_4_1_3_ru_5')
-        leagues = group_matches_by_league(matches)
-        show_leagues(call, leagues, day_type, page)
-    else:
-        day_type = data[0]
-        page = int(data[2])
-        matches = matches_list('f_4_0_3_ru_5') if day_type == "today" else matches_list('f_4_1_3_ru_5')
-        handle_matches(call, matches, day_type, page)
+    day_type = data[0]  # today или tomorrow
+    page = int(data[2])  # Номер страницы
+
+    # Определяем список матчей для выбранного дня
+    matches = matches_list('f_4_0_3_ru_5') if day_type == "today" else matches_list('f_4_1_3_ru_5')
+
+    # Перезагружаем список матчей с учетом новой страницы
+    handle_matches(call, matches, day_type, page)
 
 
 # Обработчик для матчей
@@ -338,3 +242,13 @@ while True:
     except Exception as e:
         print(f"Ошибка: {e}. Перезапуск через 5 секунд...")
         time.sleep(5)
+
+def get_next_seven_dates():
+    today = datetime.today()
+    dates = []
+
+    for i in range(1, 8):
+        date = today + timedelta(days=i)
+        dates.append(date.strftime('%d/%m'))
+
+    return dates

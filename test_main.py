@@ -3,8 +3,12 @@ from find_injure import matches_list, get_players_list, get_teams
 from files_manager import into_csv_data, into_excel_data
 import time
 import os
+import environ
 
-bot = TeleBot("")
+env = environ.Env()
+environ.Env.read_env()
+token = env('token', )
+bot = TeleBot(token=token)
 
 
 def get_matches_in_page(matches, page):
@@ -177,7 +181,6 @@ def handle_team_callback(call):
     into_csv_data(players, csv_file)
     into_excel_data(players, excel_file)
 
-
     try:
         with open(excel_file, 'rb') as file:  # Открываем файл в бинарном режиме
             bot.send_document(call.message.chat.id, file)
@@ -219,7 +222,7 @@ def handle_choose_dates(call):
         text="Выберите даты для просмотра матчей:",
         reply_markup=inline_keyboard
     )
-    
+
 
 # Запуск бота
 while True:

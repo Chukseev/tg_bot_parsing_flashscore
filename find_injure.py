@@ -31,6 +31,7 @@ def matches_list(feed) -> list: # feed = 'f_4_0_3_ru_5'
     for game in data_list:
         if '~ZA' in list(game.keys())[0]:
             league = game.get('~ZA')
+            league_id = game.get('ZC')
         if 'AA' in list(game.keys())[0]:
             event_id = game.get("~AA")
             url = f'https://www.flashscore.com.ua/match/{event_id}/#/match-summary/match-summary'
@@ -38,7 +39,7 @@ def matches_list(feed) -> list: # feed = 'f_4_0_3_ru_5'
             team_2 = game.get("AF")
             # score = f'{game.get("AG")} : {game.get("AH")}'
             # date = datetime.fromtimestamp(int(game.get("AD")))
-            result.append({'url': url, 'team_1': team_1, 'team_2': team_2, "league": league})
+            result.append({'url': url, 'team_1': team_1, 'team_2': team_2, "league": league, 'league_id': league_id})
     return result
 
 
@@ -71,10 +72,7 @@ def player_status(url: str, name: str, team_name) -> dict:
             json_data = match.group(1)
             json_data = json.loads(json_data)
 
-    with open("data.json", "w", encoding="utf-8") as file:
-        json.dump(json_data, file, ensure_ascii=False, indent=4)
-
-    last_match = 'заявлен' # ''
+    last_match = '' # ''
 
     steps = json_data['lastMatchesData']['lastMatches']
     try:
@@ -82,8 +80,11 @@ def player_status(url: str, name: str, team_name) -> dict:
             home_participant = step['homeParticipantName']
             away_participant = step['awayParticipantName']
 
-            if team_name in (home_participant, away_participant) and step['absenceCategory'] != '': # <==========
-                last_match = step['absenceCategory']
+            if team_name in (home_participant, away_participant):
+                if step['absenceCategory'] == '':
+                    last_match = 'заявлен'
+                else:
+                    last_match = step['absenceCategory']
                 break
 
     except IndexError:
@@ -156,4 +157,4 @@ def get_players_list(url: str) -> list:
 
 
 if __name__ == '__main__':
-        print(player_status('https://www.flashscore.com.ua/player/varlamov-semyon/M9CWNN6m/', 'Семен Варламов', 'Айлендерс'))
+    print(player_status('https://www.flashscore.com.ua/player/kaletnik-vladislav/fBhqTt3q/', 'Владислав Калетник', 'ХК Норильск'))
