@@ -13,9 +13,9 @@ bot = TeleBot(token=token)
 
 
 def get_leagues(match_list):
-    res = {}
+    res = []
     for league in match_list:
-        res[league['league_id']] = league['league']
+        league['league_id'] = league['league']
     return res
 
 

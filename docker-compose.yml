@@ -1,0 +1,41 @@
+version: '3.8'
+
+services:
+
+  postgres:
+    image: postgres:latest
+    container_name: postgres
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DATABASE: ${database_db}
+      POSTGRES_USER: ${user_db}
+      POSTGRES_PASSWORD: ${password_db}
+    volumes:
+      - /path/to/data:/var/lib/postgres
+    networks:
+      - app_network
+
+  app1:
+    build:
+      context: .
+    container_name: working_in_the_db
+    command: python database.py
+    depends_on:
+      - postgres
+    networks:
+      - app_network
+
+  app2:
+    build:
+      context: .
+    container_name: tg_bot
+    command: python main.py
+    depends_on:
+      - postgres
+    networks:
+      - app_network
+
+networks:
+  app_network:
+    driver: bridge
