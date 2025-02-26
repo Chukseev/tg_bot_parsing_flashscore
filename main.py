@@ -331,15 +331,15 @@ def handle_match_callback(call):
     inline_keyboard = types.InlineKeyboardMarkup()
     button_home = types.InlineKeyboardButton(
         text=f"{match['team_1']}",
-        callback_data=f"team_home_{day_type}_{league_id}_{match_index}"
+        callback_data=f"team_home_{day_type}_{league_id}_{match_index}_{page}"
     )
     button_away = types.InlineKeyboardButton(
         text=f"{match['team_2']}",
-        callback_data=f"team_away_{day_type}_{league_id}_{match_index}"
+        callback_data=f"team_away_{day_type}_{league_id}_{match_index}_{page}"
     )
     button_two_teams = types.InlineKeyboardButton(
         text=f"Обе команды",
-        callback_data=f"teams_{day_type}_{league_id}_{match_index}"
+        callback_data=f"teams_{day_type}_{league_id}_{match_index}_{page}"
     )
     back_button = types.InlineKeyboardButton(
         text="⬅ Назад к списку матчей", callback_data=f"league_{league_id}_{day_type}_{page}" # f"league_{league[0]}_{day_type}_{(page - 1) * 10 + i}"
@@ -363,6 +363,7 @@ def handle_team_callback(call):
     day_type = data[1]  # today или tomorrow
     league_id = data[2]
     match_index = int(data[3])  # Индекс матча
+    page = int(data[4])
     if day_type == "today":
         matches = get_matches_from_leagues(league_id, matches_list('f_4_0_3_ru_5'))
     else:
@@ -416,7 +417,19 @@ def handle_team_callback(call):
 
     if os.path.exists(excel_file):
         os.remove(excel_file)
-# Обработчик для выбора команды
+
+    back_button = types.InlineKeyboardButton(
+        text="⬅ Вернуться назад", callback_data=f"match_{day_type}_{league_id}_{match_index}_{page}"
+    )
+
+    inline_keyboard = types.InlineKeyboardMarkup()
+    inline_keyboard.add(back_button)
+
+    bot.send_message(
+        call.message.chat.id,
+        "Файлы отправлены!",
+        reply_markup=inline_keyboard
+    )
 
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith("team_"))
@@ -427,6 +440,7 @@ def handle_team_callback(call):
     day_type = data[2]  # today или tomorrow
     league_id = data[3]
     match_index = int(data[4])  # Индекс матча
+    page = int(data[5])
     if day_type == "today":
         matches = get_matches_from_leagues(league_id, matches_list('f_4_0_3_ru_5'))
     else:
@@ -482,6 +496,18 @@ def handle_team_callback(call):
     if os.path.exists(excel_file):
         os.remove(excel_file)
 
+    back_button = types.InlineKeyboardButton(
+        text="⬅ Вернуться назад", callback_data=f"match_{day_type}_{league_id}_{match_index}_{page}"
+    )
+
+    inline_keyboard = types.InlineKeyboardMarkup()
+    inline_keyboard.add(back_button)
+
+    bot.send_message(
+        call.message.chat.id,
+        "Файлы отправлены!",
+        reply_markup=inline_keyboard
+    )
 
 @bot.callback_query_handler(func=lambda call: call.data == "choose_dates")
 def handle_choose_dates(call):
