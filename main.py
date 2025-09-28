@@ -2,6 +2,7 @@ from telebot import TeleBot, types
 from find_injure import matches_list, get_players_list, get_teams
 from files_manager import into_csv_data, into_excel_data
 from datetime import datetime, timedelta
+import time
 import os
 import environ
 from database import SessionLocal
@@ -531,11 +532,10 @@ def handle_choose_dates(call):
 
 
 # Запуск бота
-# while True:
-#     try:
-#         bot.polling(allowed_updates=["message", "callback_query"], timeout=100, long_polling_timeout=100)
-#     except Exception as e:
-#         print(f"Ошибка: {e}. Перезапуск через 5 секунд...")
-#         time.sleep(5)
+while True:
+    try:
+        bot.polling(allowed_updates=["message", "callback_query"], timeout=100, long_polling_timeout=100)
+    except Exception as e:
+        print(f"Ошибка: {e}. Перезапуск через 5 секунд...")
+        time.sleep(5)
 
-bot.polling(allowed_updates=["message", "callback_query"], timeout=100, long_polling_timeout=100)
