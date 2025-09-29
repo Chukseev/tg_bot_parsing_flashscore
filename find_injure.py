@@ -3,7 +3,7 @@ from bs4 import BeautifulSoup
 import requests
 import re
 from datetime import datetime
-
+import asyncio
 
 def is_in_season(season: str) -> bool:
     start_year, end_year = map(int, season.split('/'))
@@ -147,8 +147,8 @@ def get_players_list(url: str) -> list:
         player_name = player.get_text(strip=True)  # Имя игрока
         player_link = f'https://www.flashscore.com.ua{player.get("href")}'  # Ссылка на игрока
         soup = BeautifulSoup(requests.get(player_link).text, 'lxml')
-        coach = soup.find('strong', class_='wcl-simpleText_Asp-0').get_text(strip=True)
-        if player_link not in seen_links and coach != 'Тренер':
+        # coach = soup.find('strong', class_='wcl-simpleText_Asp-0').get_text(strip=True)
+        if player_link not in seen_links:
             seen_links.add(player_link)
             player = player_status(player_link, player_name, team_name)
             players_list.append(player)
@@ -157,4 +157,6 @@ def get_players_list(url: str) -> list:
 
 
 if __name__ == '__main__':
-    print(player_status('https://www.flashscore.com.ua/player/kaletnik-vladislav/fBhqTt3q/', 'Владислав Калетник', 'ХК Норильск'))
+    teams = get_teams('https://www.flashscore.com.ua/match/hockey/dinamo-minsk-nFNz792t/lokomotiv-yaroslavl-MNZan6lB/?mid=U1cXysIP')
+    print(teams)
+    print(get_players_list(teams['home']))
