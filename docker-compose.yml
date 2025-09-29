@@ -8,34 +8,38 @@ services:
     ports:
       - "5432:5432"
     environment:
-      POSTGRES_DATABASE: ${database_db}
+      POSTGRES_DB: ${database}
       POSTGRES_USER: ${user_db}
       POSTGRES_PASSWORD: ${password_db}
     volumes:
       - /path/to/data:/var/lib/postgres
     networks:
       - app_network
+    restart: unless-stopped
 
   app1:
     build:
       context: .
     container_name: working_in_the_db
-    command: python database.py
+    command: /app/venv/bin/python3 database.py
     depends_on:
       - postgres
     networks:
       - app_network
+    restart: unless-stopped
 
   app2:
     build:
       context: .
     container_name: tg_bot
-    command: python main.py
+    command: /app/venv/bin/python3 main.py
     depends_on:
       - postgres
     networks:
       - app_network
+    restart: unless-stopped
 
 networks:
   app_network:
     driver: bridge
+
